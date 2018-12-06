@@ -1,2 +1,1 @@
-# agr
-guru in acme
+agr is simple interface to guru tool
