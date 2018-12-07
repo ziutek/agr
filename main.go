@@ -53,39 +53,57 @@ func main() {
 	checkErr(win.Ctl("mark\nnomark\naddr=dot\n"))
 	a, b, err := win.ReadAddr()
 	checkErr(err)
+	width := b - a
 
-	if b == 0 {
-		return
+	buf := make([]byte, 1024)
+	n, err := win.Read("data", buf)
+	m := 0
+	for m < n {
+		r, o := utf8.DecodeRune(buf[m:n])
+		if unicode.IsLetter(r) {
+			break
+		}
+		m += o
+		width--
 	}
+	mode := "definition"
+	if m > 0 {
+		mode = "referrers"
+		n -= m
+	}
+	for err == nil {
+		m, err = win.Read("data", buf)
+		n += m
+	}
+	if err != io.EOF {
+		checkErr(err)
+	}
+	_, err = win.Seek("body", 0, io.SeekStart)
+	checkErr(err)
+	// SeekEnd not supported so can't use: size, err = win.Seek("body", 0, io.SeekEnd)
+	size := 0
+	for err == nil {
+		m, err = win.Read("body", buf)
+		size += m
+	}
+	if err != io.EOF {
+		checkErr(err)
+	}
+	start := int(size) - n
+
+	//fmt.Printf("a=%d b=%d star=%d width=%d size=%d %s\n", a, b, start, width, size, buf)
+
+	pos := fpath + ":#" + strconv.Itoa(start)
+	if width > 0 {
+		pos += ",#" + strconv.Itoa(start+width)
+	}
+
 	if len(os.Args) > 1 {
-		cmd := exec.Command("guru", os.Args[1:]...)
+		cmd := exec.Command("guru", append(os.Args[1:], pos)...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		checkErr(cmd.Run())
 		return
-	}
-
-	mode := "definition"
-	pos := fpath + ":#" + strconv.Itoa(a)
-	if b != a {
-		_, err = win.Seek("body", int64(a), 0)
-		checkErr(err)
-		buf := make([]byte, b-a)
-		_, err = win.Read("body", buf)
-		checkErr(err)
-		i := 0
-		for i < len(buf) {
-			r, n := utf8.DecodeRune(buf[i:])
-			if unicode.IsLetter(r) {
-				break
-			}
-			i += n
-		}
-		if i > 0 {
-			mode = "referrers"
-			a += i
-		}
-		pos += ",#" + strconv.Itoa(b)
 	}
 	cmd := exec.Command("guru", mode, pos)
 	cmd.Stderr = os.Stderr
