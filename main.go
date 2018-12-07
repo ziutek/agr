@@ -58,7 +58,7 @@ func main() {
 	buf := make([]byte, 1024)
 	n, err := win.Read("data", buf)
 	m := 0
-	for m < n {
+	for width > 0 && m < n {
 		r, o := utf8.DecodeRune(buf[m:n])
 		if unicode.IsLetter(r) {
 			break
@@ -67,9 +67,12 @@ func main() {
 		width--
 	}
 	mode := "definition"
-	if m > 0 {
-		mode = "referrers"
-		n -= m
+	if width > 0 {
+		mode = "describe"
+		if m > 0 {
+			mode = "referrers"
+			n -= m
+		}
 	}
 	for err == nil {
 		m, err = win.Read("data", buf)
@@ -105,8 +108,12 @@ func main() {
 		checkErr(cmd.Run())
 		return
 	}
+
 	cmd := exec.Command("guru", mode, pos)
 	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	checkErr(cmd.Run())
+	output, err := cmd.Output()
+	checkErr(err)
+
+	// TODO: reformat guru output for describe
+	os.Stdout.Write(output)
 }
