@@ -68,9 +68,9 @@ func main() {
 	}
 	mode := "definition"
 	if width > 0 {
-		mode = "describe"
+		mode = "referrers"
 		if m > 0 {
-			mode = "referrers"
+			mode = "describe"
 			n -= m
 		}
 	}
